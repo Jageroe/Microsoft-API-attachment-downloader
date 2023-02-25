@@ -1,0 +1,8 @@
+{
+    "sender_username": "<Insert the sender mail address>",
+    "sender_password": "<Insert here the sender pw>",
+    "smtp_host": "<Insert here the STMP host for example: smtp.office365.com>",
+    "smtp_port": "<Insert here the port of the STMP server. IT MUST BE AN INT!>",
+    "receiver_address": ["<Insert here the receiver mail address>"]
+}
+    
