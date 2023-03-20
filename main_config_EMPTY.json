@@ -1,0 +1,8 @@
+{"tenant_id": "<Insert your tenant id here>", 
+ "client_id": "<Insert your application client id here>", 
+ "authority": "https://login.microsoftonline.com/", 
+ "endpoint": "https://graph.microsoft.com/v1.0", 
+ "user_to_read": "<Insert your username here>", 
+ "user_password": "<Insert your pw here>", 
+ "save_path": "<Insert the path where you want to save the attachments>"
+}

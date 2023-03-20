@@ -1,0 +1,12 @@
+# ignore ALL .log files
+*.log
+
+# ignore venv folder
+venv-Microsoft-API-attachment-downloader/
+
+# ignore downloaded-attachments folder
+downloaded-attachments/ 
+
+# ignore config files
+mail_config.json
+main_config.json
