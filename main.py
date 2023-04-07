@@ -8,7 +8,7 @@ import msal
 from sendmail import sending_mail
 
 
-# Creating a parser
+# Creating an argument parser to make it possible to pass arguments via terminal
 parser = argparse.ArgumentParser()
 
 parser.add_argument("--mailsearch",
@@ -51,17 +51,17 @@ logging.basicConfig(
 class MicrosoftGraphApiConnection:
 
     """
-    Class that acquires the token and stores it for the API requests
+    Class that acquires the token and stores it for the API requests.
     """
 
-    def __init__(self, client_id: str, authority: str, 
+    def __init__(self, client_id: str, authority: str,
                  endpoint: str, scope: list, user_to_read: str,
                  user_password:str)-> None:
-        
+
         self.endpoint = endpoint
-        app = msal.ConfidentialClientApplication(client_id, authority=authority)
 
         try:
+            app = msal.ConfidentialClientApplication(client_id, authority=authority)
             token = app.acquire_token_by_username_password(
                 username=user_to_read,
                 password=user_password,
@@ -76,24 +76,24 @@ class MicrosoftGraphApiConnection:
             logger.info("Token has been successfully acquired!")
             self.headers={'Authorization': 'Bearer ' + self.access_token}
 
-        except:
-            logger.error(f'An error has occurred during acquiring the acces token:\n{token}')
+        except Exception as ex:
+            logger.error(f'An error has occurred during acquiring the acces token:\nexception:{ex}')
             sending_mail(
                 subject='ERROR - Attachment downloader',
-                message=f'An error has occurred during acquiring the acces token:\n{token}'
+                message=f'An error has occurred during acquiring the acces token:\nexception:{ex}'
             )
-            raise Exception
+            raise
 
 
     def get_mails(self, search_query: str = None)-> list:
 
         """
-        Returns a dict with the found messages containing the id, the subject, and the sender's address. 
+        Returns a dict with the found messages containing the id, the subject, and the sender's address.
 
         parameters:
 
-        search_query: 
-            Use this, if you wanna search specific messages. 
+        search_query:
+            Use this, if you wanna search specific messages.
             It uses the microsoft KQL syntax.
             Further information : https://learn.microsoft.com/en-us/graph/search-query-parameter?tabs=http
 
@@ -118,15 +118,15 @@ class MicrosoftGraphApiConnection:
             return messages
 
         except Exception as ex:
-            
+
             logger.error(f'An error has occurred:\n{ex}\nThe content of the response:\n{response.json()}')
             sending_mail(
                 subject='ERROR - Attachment downloader',
                 message=f'An error has occurred:\n{ex}\nThe content of the response:\n{response.json()}'
             )
-            raise Exception
-        
-    
+            raise
+
+
 
     def download_attachments(self, message_id: str, save_path: str):
 
@@ -140,21 +140,21 @@ class MicrosoftGraphApiConnection:
 
         save_path:
             here will be the attachments downloaded
-        
+
         """
 
         # getting the ids of the attachments
         try:
             response_mail = requests.get(
-                url=f'{self.endpoint}/me/messages/{message_id}/attachments', 
+                url=f'{self.endpoint}/me/messages/{message_id}/attachments',
                 headers=self.headers
             )
             response_mail.raise_for_status()
 
-        except Exception as exception:
-            logger.error(f'An error has occurred: \n {exception}\n The content of the response:\n {response_mail.json()}')
-            raise Exception
-        
+        except Exception as ex:
+            logger.error(f'An error has occurred: \n {ex}\n The content of the response:\n {response_mail.json()}')
+            raise
+
 
         # requesting the attachments with a loop
         try:
@@ -163,7 +163,7 @@ class MicrosoftGraphApiConnection:
                 attachment_name = attachment['name']
 
                 response_attachment = requests.get(
-                    f'{self.endpoint}/me/messages/{message_id}/attachments/{attachment_id}/$value', 
+                    f'{self.endpoint}/me/messages/{message_id}/attachments/{attachment_id}/$value',
                     headers=self.headers
                 )
                 response_attachment.raise_for_status()
@@ -174,19 +174,19 @@ class MicrosoftGraphApiConnection:
 
                 logger.info(f'{attachment_name} has been saved succesfully!')
 
-        except Exception as exeption:
+        except Exception as ex:
             logger.error(
-                f"""An error has occurred with the following attachment:\n 
-                {attachment_name} - id: {attachment_id}\n {exeption}"""
-            )
-            
-            sending_mail(
-                subject='ERROR - Logicort attachment donwloader',
-                message=f"""An error has occurred with the following attachment:\n 
-                        {attachment_name} - id: {attachment_id}\n {exeption}"""
+                f"""An error has occurred with the following attachment:\n
+                {attachment_name} - id: {attachment_id}\n {ex}"""
             )
 
-            raise Exception
+            sending_mail(
+                subject='ERROR - Logicort attachment donwloader',
+                message=f"""An error has occurred with the following attachment:\n
+                        {attachment_name} - id: {attachment_id}\n {ex}"""
+            )
+
+            raise
 
 def main():
 
@@ -202,17 +202,17 @@ def main():
     USER_TO_READ = config['user_to_read']
     USER_PASSWORD = config['user_password']
 
-    # initialize the connection object. 
+    # initialize the connection object.
     connection = MicrosoftGraphApiConnection(
-            client_id = CLIENT_ID, 
+            client_id = CLIENT_ID,
             authority = AUTHORITY,
             endpoint = ENDPOINT,
-            scope = SCOPE, 
-            user_to_read = USER_TO_READ, 
+            scope = SCOPE,
+            user_to_read = USER_TO_READ,
             user_password = USER_PASSWORD
         )
-    
-    
+
+
     mails = connection.get_mails(args.mailsearch)
 
     # loop trough the mails list, and download all the attachments
