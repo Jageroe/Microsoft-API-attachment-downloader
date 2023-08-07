@@ -21,12 +21,12 @@ def parse_args(args:str):
         argparse.Namespace: Parsed command-line arguments.
     """
     parser = argparse.ArgumentParser()
-    # parser.add_argument(
-    #     "--name",
-    #     type=str,
-    #     required=True,
-    #     help="The name of the running instance. This has only purpose for logging. "
-    # )
+    parser.add_argument(
+        "--name",
+        type=str,
+        required=True,
+        help="The name of the running instance. This has only purpose for logging. "
+    )
 
 
     parser.add_argument(
@@ -54,29 +54,45 @@ def parse_args(args:str):
     return parser.parse_args(args)
 
 
-# setting up the logging object
-logger = logging.getLogger()
+def set_logger(name:str) -> logging.Logger:
 
-# setting up a handler for the terminal messages
-stream_handler = logging.StreamHandler()
-stream_handler.setLevel(logging.INFO)
+    """
+    Method to setup the logger object. 
+    It also does some basic configuration, such as define the level and create handlers
 
-# setting up a handler for the logfile
-file_handler = logging.FileHandler('log.log')
-file_handler.setLevel(logging.INFO)
+    Args:
+        name (str): Name of the logger. This will contained in the log file's name
 
-# The level = logging.DEBUG is just for the basic config. The handlers
-# will overwrite this. Therefore we can change the logging levels
-# in the handler objects!
-logging.basicConfig(
-    level=logging.DEBUG,
-    format='[%(asctime)s] [%(module)s] [%(levelname)s] - %(message)s',
-    datefmt='%Y-%m-%d %H:%M:%S',
-    handlers=[
-        stream_handler,
-        file_handler
-    ]
-)
+    Returns:
+        The configured logger object.
+    
+    """
+
+    # setting up the logging object
+    logger = logging.getLogger()
+
+    # setting up a handler for the terminal messages
+    stream_handler = logging.StreamHandler()
+    stream_handler.setLevel(logging.INFO)
+
+    # setting up a handler for the logfile
+    file_handler = logging.FileHandler(f'log/{name}_log.log')
+    file_handler.setLevel(logging.INFO)
+
+    # The level = logging.DEBUG is just for the basic config. The handlers
+    # will overwrite this. Therefore we can change the logging levels
+    # in the handler objects!
+    logging.basicConfig(
+        level=logging.DEBUG,
+        format='[%(asctime)s] [%(module)s] [%(levelname)s] - %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S',
+        handlers=[
+            stream_handler,
+            file_handler
+        ]
+    )
+
+    return logger
 
 def read_config(path:str) -> dict:
 
@@ -236,6 +252,9 @@ class MicrosoftGraphApiConnection:
 def main():
 
     args = parse_args(sys.argv[1:])
+
+    global logger
+    logger = set_logger(args.name)
 
     # reading the config file
     config = read_config('main_config.json')
