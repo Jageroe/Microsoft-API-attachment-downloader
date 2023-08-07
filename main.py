@@ -48,6 +48,21 @@ logging.basicConfig(
     ]
 )
 
+def read_config(path:str) -> dict:
+
+    """
+    Read the config file and return a dictionary containing the config data.
+
+    Args:
+        path (str): Path to the config file.
+
+    Returns:
+        dict: Config data as a dictionary.
+    """
+
+    with open(path, 'r', encoding='utf-8') as file:
+        return json.loads(file.read())
+
 class MicrosoftGraphApiConnection:
 
     """
@@ -191,8 +206,7 @@ class MicrosoftGraphApiConnection:
 def main():
 
     # reading the config file
-    with open('main_config.json', 'r', encoding='utf-8') as file:
-        config = json.loads(file.read())
+    config = read_config('main_config.json')
 
     CLIENT_ID = config['client_id']
     TENANT_ID = config['tenant_id']
