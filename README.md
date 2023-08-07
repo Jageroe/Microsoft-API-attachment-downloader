@@ -11,13 +11,17 @@ To save the config files correctly, follow the instructions below:
 
 The main.py script can be run from the terminal using the following command:
 
-        python3 main.py --mailsearch MAILSEARCH --savedir SAVEDIR
+        python3 main.py --mailsearch MAILSEARCH --savedir SAVEDIR --name NAME --numofattachments NUMOFATTACHMENTS
 
 The following are the command-line arguments:
 
- **--mailsearch:**  You need to pass a KQL query to search specific messages. This uses the Micosoft's KQL syntax
+**--mailsearch:**  You need to pass a KQL query to search specific messages. This uses the Micosoft's KQL syntax
 
 **--savedir:** The path of the folder where the attachments will be saved
+
+**--name:** Name of the running instance. This name will by used in the logging process 
+
+**--numofattachments:** The expected number of attachment. If there's more or less, a notification mail will be sent
 
 I also created the **`run.sh`** bash script that allows you to run main.py with dinamically changing arguments such as dates.
 
