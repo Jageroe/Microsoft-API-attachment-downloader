@@ -36,12 +36,12 @@ def parse_args(args:str):
         help="You need to pass a KQL query to search specific messages. This use the Micosoft's KQL syntax"
     )
 
-    # parser.add_argument(
-    #     "--numofattachments",
-    #     type=int,
-    #     required=True,
-    #     help="The expected number of attachments"
-    # )
+    parser.add_argument(
+        "--numofattachments",
+        type=int,
+        required=True,
+        help="The expected number of attachments"
+    )
 
     parser.add_argument(
         "--savedir",
@@ -149,6 +149,41 @@ def read_config(path:str) -> dict:
 
     with open(path, 'r', encoding='utf-8') as file:
         return json.loads(file.read())
+
+
+@error_mail
+@log
+def check_attachments_number(act_num:int, expected_num:int):
+    """
+    Check if the actual number of attachments matches the expected number.
+
+    Args:
+        act_num (int): Actual number of attachments.
+        expected_num (int): Expected number of attachments.
+
+    Raises:
+        ValueError: If the actual number of attachments doesn't match the expected number.
+    """
+    if act_num != expected_num:
+        raise ValueError(f"Expected {expected_num} attachments, but {act_num} were downloaded.")
+
+
+@error_mail    
+@log
+def check_found_mails_number(mails):
+    """
+    Check if the actual number of attachments matches the expected number.
+
+    Args:
+        act_num (int): Actual number of attachments.
+        expected_num (int): Expected number of attachments.
+
+    Raises:
+        ValueError: If the actual number of attachments doesn't match the expected number.
+    """
+    EXPECTED_NUMBER = 1
+    if len(mails) != EXPECTED_NUMBER:
+        raise ValueError(f"Expected {EXPECTED_NUMBER} mails, but {len(mails)} were found.")
 
 
 class MicrosoftGraphApiConnection:
@@ -279,25 +314,27 @@ def main():
     USER_TO_READ = config['user_to_read']
     USER_PASSWORD = config['user_password']
 
-    # initialize the connection object.
+    # initialize the connection object. 
     connection = MicrosoftGraphApiConnection(
-            client_id = CLIENT_ID,
+            client_id = CLIENT_ID, 
             authority = AUTHORITY,
             endpoint = ENDPOINT,
-            scope = SCOPE,
-            user_to_read = USER_TO_READ,
+            scope = SCOPE, 
+            user_to_read = USER_TO_READ, 
             user_password = USER_PASSWORD
         )
-
-
+    
     mails = connection.get_mails(args.mailsearch)
 
-    # loop trough the mails list, and download all the attachments
-    for mail_id in [mail['id'] for mail in mails]:
-        connection.download_attachments(
-            message_id = mail_id,
-            save_path = args.savedir
-        )
+    check_found_mails_number(mails)
+
+    actual_number_of_attachments  = connection.download_attachments(
+        message_id = mails[0]['id'],
+        save_path = args.savedir
+    )
+
+    check_attachments_number(actual_number_of_attachments,args.numofattachments)
+
 
 if __name__ == '__main__':
     main()
