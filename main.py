@@ -2,26 +2,56 @@ import requests
 import json
 import os
 import argparse
+import sys, os, functools
 from datetime import date, timedelta
 import logging
 import msal
 from sendmail import sending_mail
 
 
-# Creating an argument parser to make it possible to pass arguments via terminal
-parser = argparse.ArgumentParser()
+def parse_args(args:str):
 
-parser.add_argument("--mailsearch",
-                    type=str,
-                    required=True,
-                    help="You need to pass a KQL query to search specific messages. This use the Micosoft's KQL syntax")
+    """
+    Parse command-line arguments.
 
-parser.add_argument("--savedir",
-                    type=str,
-                    required=True,
-                    help="The path of the folder where the attachments will be saved")
+    Args:
+        args (str): Command-line arguments as a string.
 
-args = parser.parse_args()
+    Returns:
+        argparse.Namespace: Parsed command-line arguments.
+    """
+    parser = argparse.ArgumentParser()
+    # parser.add_argument(
+    #     "--name",
+    #     type=str,
+    #     required=True,
+    #     help="The name of the running instance. This has only purpose for logging. "
+    # )
+
+
+    parser.add_argument(
+        "--mailsearch",
+        type=str,
+        required=True,
+        help="You need to pass a KQL query to search specific messages. This use the Micosoft's KQL syntax"
+    )
+
+    # parser.add_argument(
+    #     "--numofattachments",
+    #     type=int,
+    #     required=True,
+    #     help="The expected number of attachments"
+    # )
+
+    parser.add_argument(
+        "--savedir",
+        type=str,
+        required=True,
+        help="The path of the folder where the attachments will be saved"
+    )
+
+
+    return parser.parse_args(args)
 
 
 # setting up the logging object
@@ -204,6 +234,8 @@ class MicrosoftGraphApiConnection:
             raise
 
 def main():
+
+    args = parse_args(sys.argv[1:])
 
     # reading the config file
     config = read_config('main_config.json')
