@@ -94,6 +94,47 @@ def set_logger(name:str) -> logging.Logger:
 
     return logger
 
+def log(func):
+    """
+    Decorator for logging
+    """
+
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        try:
+            result = func(*args, **kwargs)
+            logger.info(f"{func.__name__} method ran successfully!")
+
+            return result
+        except Exception as ex:
+            logger.exception(f"Exception raised in {func.__name__}. exception: {str(ex)}")
+
+            raise ex
+    return wrapper
+
+
+def error_mail(func):
+    """
+    Decorator for sending error emails.
+    """
+
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        try:
+            result = func(*args, **kwargs)
+            return result
+        
+        except Exception as ex:
+            sending_mail(
+                subject='ERROR - Attachment downloader',
+                message=f"Exception raised in {func.__name__}. exception: {str(ex)}"
+                )
+            
+            raise ex
+    return wrapper
+
+@error_mail
+@log
 def read_config(path:str) -> dict:
 
     """
@@ -109,146 +150,117 @@ def read_config(path:str) -> dict:
     with open(path, 'r', encoding='utf-8') as file:
         return json.loads(file.read())
 
+
 class MicrosoftGraphApiConnection:
 
     """
     Class that acquires the token and stores it for the API requests.
     """
 
-    def __init__(self, client_id: str, authority: str,
+    @error_mail
+    @log
+    def __init__(self, client_id: str, authority: str, 
                  endpoint: str, scope: list, user_to_read: str,
                  user_password:str)-> None:
-
+        
         self.endpoint = endpoint
+        app = msal.ConfidentialClientApplication(client_id, authority=authority)
 
-        try:
-            app = msal.ConfidentialClientApplication(client_id, authority=authority)
-            token = app.acquire_token_by_username_password(
-                username=user_to_read,
-                password=user_password,
-                scopes=scope
-            )
+        token = app.acquire_token_by_username_password(
+            username=user_to_read,
+            password=user_password,
+            scopes=scope
+        )
 
-            self.token = token
+        self.token = token
 
-            # if the acquired token doesn't have the acces_token key the try statement will raise an error
-            self.access_token = self.token['access_token']
+        # if the acquired token doesn't have the acces_token key the try statement will raise an error
+        self.access_token = self.token['access_token']
 
-            logger.info("Token has been successfully acquired!")
-            self.headers={'Authorization': 'Bearer ' + self.access_token}
-
-        except Exception as ex:
-            logger.error(f'An error has occurred during acquiring the acces token:\nexception:{ex}')
-            sending_mail(
-                subject='ERROR - Attachment downloader',
-                message=f'An error has occurred during acquiring the acces token:\nexception:{ex}'
-            )
-            raise
+        logger.info("Token has been successfully acquired!")
+        self.headers={'Authorization': 'Bearer ' + self.access_token}
 
 
-    def get_mails(self, search_query: str = None)-> list:
+    @error_mail
+    @log
+    def get_mails(self, mail_query:str = None)-> list:
 
         """
-        Returns a dict with the found messages containing the id, the subject, and the sender's address.
-
+        Returns a dict with the found messages containing the id, the subject, and the sender's address. 
         parameters:
-
-        search_query:
-            Use this, if you wanna search specific messages.
+        search_query: 
+            Use this, if you wanna search specific messages. 
             It uses the microsoft KQL syntax.
             Further information : https://learn.microsoft.com/en-us/graph/search-query-parameter?tabs=http
-
         """
 
-        try:
-            response = requests.get(
-                url=f'{self.endpoint}/me/messages{search_query if search_query else ""}',
-                headers=self.headers
-            )
-            response.raise_for_status()
-            messages = []
+        
+        response = requests.get(
+            url=f'{self.endpoint}/me/messages{mail_query if mail_query else ""}',
+            headers=self.headers
+        )
+        response.raise_for_status()
+        messages = []
 
-            for i, mail in enumerate(response.json()['value']):
+        for i, mail in enumerate(response.json()['value']):
 
-                messages.append({})
-                messages[i]['id'] = mail['id']
-                messages[i]['subject'] = mail['subject']
-                messages[i]['from'] = mail['from']['emailAddress']['address']
+            messages.append({})
+            messages[i]['id'] = mail['id']
+            messages[i]['subject'] = mail['subject']
+            messages[i]['from'] = mail['from']['emailAddress']['address']
 
-            logger.info(f'{len(messages)} messages has been found: {[message for message in messages]}')
-            return messages
-
-        except Exception as ex:
-
-            logger.error(f'An error has occurred:\n{ex}\nThe content of the response:\n{response.json()}')
-            sending_mail(
-                subject='ERROR - Attachment downloader',
-                message=f'An error has occurred:\n{ex}\nThe content of the response:\n{response.json()}'
-            )
-            raise
+        logger.info(f'{len(messages)} messages has been found: {[message for message in messages]}')
+        return messages
 
 
-
-    def download_attachments(self, message_id: str, save_path: str):
+        
+    
+    @error_mail
+    @log
+    def download_attachments(self, message_id: str, save_path: str) ->int:
 
         """
         It downloads the attachments of the given mail
-
         parameters:
-
         message_id:
             the id of the message from which we want to download the attachments
-
         save_path:
             here will be the attachments downloaded
 
+        returns the number of the attachments which have been downloaded
+        
         """
 
         # getting the ids of the attachments
-        try:
-            response_mail = requests.get(
-                url=f'{self.endpoint}/me/messages/{message_id}/attachments',
+        response_mail = requests.get(
+            url=f'{self.endpoint}/me/messages/{message_id}/attachments', 
+            headers=self.headers
+        )
+        response_mail.raise_for_status()
+
+
+    # requesting the attachments with a loop
+        for attachment in response_mail.json()['value']:
+            attachment_id = attachment['id']
+            attachment_name = attachment['name']
+
+            response_attachment = requests.get(
+                f'{self.endpoint}/me/messages/{message_id}/attachments/{attachment_id}/$value', 
                 headers=self.headers
             )
-            response_mail.raise_for_status()
+            response_attachment.raise_for_status()
 
-        except Exception as ex:
-            logger.error(f'An error has occurred: \n {ex}\n The content of the response:\n {response_mail.json()}')
-            raise
+            # saving the file
+            with open(os.path.join(save_path,attachment_name),'wb') as f:
+                f.write(response_attachment.content)
 
+            logger.info(f'{attachment_name} has been saved succesfully!')
 
-        # requesting the attachments with a loop
-        try:
-            for attachment in response_mail.json()['value']:
-                attachment_id = attachment['id']
-                attachment_name = attachment['name']
+        # Number of attachments
+        return len(response_mail.json()['value'])
 
-                response_attachment = requests.get(
-                    f'{self.endpoint}/me/messages/{message_id}/attachments/{attachment_id}/$value',
-                    headers=self.headers
-                )
-                response_attachment.raise_for_status()
-
-                # saving the file
-                with open(os.path.join(save_path,attachment_name),'wb') as f:
-                    f.write(response_attachment.content)
-
-                logger.info(f'{attachment_name} has been saved succesfully!')
-
-        except Exception as ex:
-            logger.error(
-                f"""An error has occurred with the following attachment:\n
-                {attachment_name} - id: {attachment_id}\n {ex}"""
-            )
-
-            sending_mail(
-                subject='ERROR - Logicort attachment donwloader',
-                message=f"""An error has occurred with the following attachment:\n
-                        {attachment_name} - id: {attachment_id}\n {ex}"""
-            )
-
-            raise
-
+@error_mail
+@log
 def main():
 
     args = parse_args(sys.argv[1:])
